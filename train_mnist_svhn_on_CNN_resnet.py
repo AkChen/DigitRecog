@@ -1,8 +1,8 @@
 import torch as t
 import torchvision
 from CNN_MNIST import CNN as CNN_M
-from CNN_SVHN import CNN as CNN_S
-from CNN_Fusion import FusionNet as CNN_F
+from resnet_image import resnet18 as CNN_S
+from CNN_Fusion_2 import FusionNet as CNN_F
 from BioModalDataset import BioModalDataset
 from torch.utils.data import DataLoader,TensorDataset
 import torch.optim as optim
@@ -90,7 +90,7 @@ def main():
 
     optimizer = optim.SGD(params=fuson_net_cuda.parameters(), lr=args.learning_rate, momentum=args.momentum)
     max_acc = 0.0
-    print('training mnist with CNN')
+    print('training mnist svhn with CNN Resnet' )
     for e in range(args.epoch):
         net_train(fuson_net_cuda,train_dataloader,optimizer,loss_func,e,args)
         test_acc = net_test(fuson_net_cuda,test_dataloader)
