@@ -23,7 +23,7 @@ def net_train(net,data_loader,opt,loss_func,cur_e,args):
     batch_num = int(len(data_loader.dataset) / args.batch_size)
 
     for i,data in enumerate(data_loader,0):
-        #print('batch:%d/%d' % (i,batch_num))
+        print('batch:%d/%d' % (i,batch_num))
         m,v,l = data
         m,v,l = m.type(t.FloatTensor).cuda(),v.type(t.FloatTensor).cuda(),l.type(t.LongTensor).cuda()
 
@@ -74,18 +74,18 @@ def main():
     print('loading data')
 
     train_dataset = BioModalDataset(file='./data/biomodal/biomodal_train.npy')
-    train_dataset = BioModalDataset(file='./data/biomodal/biomodal_train.npy')
+    test_dataset = BioModalDataset(file='./data/biomodal/biomodal_test.npy')
 
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    test_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
 
 
     mnist_net = CNN_M(10)
-    mnist_net_cuda = t.nn.DataParallel(mnist_net).cuda()
+    mnist_net_cuda = t.nn.DataParallel(mnist_net,device_ids=[0]).cuda()
     svhn_net = CNN_S(10)
-    svhn_net_cuda = t.nn.DataParallel(svhn_net).cuda()
+    svhn_net_cuda = t.nn.DataParallel(svhn_net,device_ids=[0]).cuda()
     fusion_net = CNN_F(mnist_net_cuda,svhn_net_cuda,10)
-    fuson_net_cuda = t.nn.DataParallel(fusion_net).cuda()
+    fuson_net_cuda = t.nn.DataParallel(fusion_net,device_ids=[0]).cuda()
     loss_func = t.nn.CrossEntropyLoss()
 
     optimizer = optim.SGD(params=fuson_net_cuda.parameters(), lr=args.learning_rate, momentum=args.momentum)
