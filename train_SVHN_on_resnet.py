@@ -1,6 +1,6 @@
 import torch as t
 import torchvision
-from resnet_image import resnet101
+from resnet_image import resnet18
 from torch.utils.data import DataLoader, TensorDataset
 import torch.optim as optim
 import datetime
@@ -79,7 +79,7 @@ def main():
     test_dataloader = DataLoader(mnist_test_data, batch_size=args.batch_size, shuffle=True)
 
     loss_func = t.nn.CrossEntropyLoss()
-    net = resnet101(pretrained=False)
+    net = resnet18(pretrained=False)
     net = t.nn.DataParallel(net).cuda()
 
     optimizer = optim.SGD(params=net.parameters(), lr=args.learning_rate, momentum=args.momentum)
