@@ -1,6 +1,7 @@
 import torch as t
 import torchvision
 from CNN_MNIST import CNN
+from BioModalDataset import BioModalDataset
 from torch.utils.data import DataLoader,TensorDataset
 import torch.optim as optim
 import datetime
@@ -21,8 +22,9 @@ def net_train(net,data_loader,opt,loss_func,cur_e,args):
 
     for i,data in enumerate(data_loader,0):
         print('batch:%d/%d' % (i,batch_num))
-        img,label = data
-        img,label = img.cuda(),label.cuda()
+        m,v,l = data
+        m,v,l = m.type(t.FloatTensor).cuda(),v.type(t.FloatTensor).cuda(),l.type(t.LongTensor).cuda()
+        img,label = m,l
 
         opt.zero_grad()
 
@@ -47,9 +49,9 @@ def net_test(net,data_loader):
     net.eval()
     with t.no_grad():
         for i, data in enumerate(data_loader, 0):
-
-            img, label = data # cpu
-            img, label = img.cuda(), label.cuda() # gpu
+            m, v, l = data
+            m, v, l = m.type(t.FloatTensor).cuda(), v.type(t.FloatTensor).cuda(), l.type(t.LongTensor).cuda()
+            img, label = m, l
             output = net(img)[1]
 
             predict_label = t.argmax(output,dim=1)
@@ -75,8 +77,8 @@ def main():
     )
     print('loading data')
 
-    mnist_train_data = mnist.MNIST(data_root_path, train=True, transform=data_tf, download=True)
-    mnist_test_data = mnist.MNIST(data_root_path, train=False, transform=data_tf, download=True)
+    mnist_train_data = BioModalDataset(file='./data/biomodal/biomodal_train.npy')
+    mnist_test_data = BioModalDataset(file='./data/biomodal/biomodal_test.npy')
 
     train_dataloader = DataLoader(mnist_train_data, batch_size=args.batch_size, shuffle=True)
     test_dataloader = DataLoader(mnist_test_data, batch_size=args.batch_size, shuffle=True)

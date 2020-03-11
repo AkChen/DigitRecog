@@ -4,6 +4,7 @@ from resnet_image import resnet18
 from torch.utils.data import DataLoader, TensorDataset
 import torch.optim as optim
 import datetime
+from BioModalDataset import BioModalDataset
 from torchvision.datasets import mnist, svhn
 import argparse
 import sys
@@ -46,8 +47,9 @@ def net_test(net, data_loader):
     net.eval()
     with t.no_grad():
         for i, data in enumerate(data_loader, 0):
-            img, label = data  # cpu
-            img, label = img.cuda(), label.cuda()  # gpu
+            m, v, l = data
+            m, v, l = m.type(t.FloatTensor).cuda(), v.type(t.FloatTensor).cuda(), l.type(t.LongTensor).cuda()
+            img, label = v, l
             output = net(img)[1]
 
             predict_label = t.argmax(output, dim=1)
@@ -72,8 +74,8 @@ def main():
     )
     print('loading data')
 
-    mnist_train_data = svhn.SVHN(data_root_path, split='train', transform=data_tf, download=True)
-    mnist_test_data = svhn.SVHN(data_root_path, split='test', transform=data_tf, download=True)
+    mnist_train_data = BioModalDataset(file='./data/biomodal/biomodal_train.npy')
+    mnist_test_data = BioModalDataset(file='./data/biomodal/biomodal_test.npy')
 
     train_dataloader = DataLoader(mnist_train_data, batch_size=args.batch_size, shuffle=True)
     test_dataloader = DataLoader(mnist_test_data, batch_size=args.batch_size, shuffle=True)

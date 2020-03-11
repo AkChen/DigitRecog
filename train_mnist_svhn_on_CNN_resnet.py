@@ -99,7 +99,7 @@ def main():
         if test_acc > max_acc:
             max_acc = test_acc
 
-    f = open('./result/train_mnist_svhn_on_CNN.txt',mode='w')
+    f = open('./result/train_mnist_svhn_on_CNN_resnet.txt',mode='w')
     f.write('max_acc:%.4f' % (max_acc))
     f.close()
 
