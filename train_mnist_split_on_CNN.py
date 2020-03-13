@@ -1,8 +1,10 @@
 import torch as t
 import numpy as np
 import torchvision
-from CNN_MNIST import CNN
-from BioModalDataset import BioModalDataset
+from CNN_MNIST_C3 import CNN as CNN_M
+from CNN_MNIST_C3 import CNN as CNN_S
+from CNN_Fusion_Split_Dual_MNIST import FusionNet as CNN_F
+from SplitDataset import BioModalDataset
 from torch.utils.data import DataLoader,TensorDataset
 import torch.optim as optim
 import datetime
@@ -14,7 +16,6 @@ train_batch_size = 64
 test_batch_size = 64
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-
 
 def net_train(net,data_loader,opt,loss_func,cur_e,args):
 
@@ -28,12 +29,11 @@ def net_train(net,data_loader,opt,loss_func,cur_e,args):
         #print('batch:%d/%d' % (i,batch_num))
         m,v,l = data
         m,v,l = m.type(t.FloatTensor).cuda(),v.type(t.FloatTensor).cuda(),l.type(t.LongTensor).cuda()
-        img,label = m,l
 
         opt.zero_grad()
 
-        output = net(img)[1]
-        loss = loss_func(output,label)
+        output = net(m,v)
+        loss = loss_func(output,l)
         loss.backward()
         opt.step()
 
@@ -55,13 +55,14 @@ def net_test(net,data_loader):
         for i, data in enumerate(data_loader, 0):
             m, v, l = data
             m, v, l = m.type(t.FloatTensor).cuda(), v.type(t.FloatTensor).cuda(), l.type(t.LongTensor).cuda()
-            img, label = m, l
-            output = net(img)[1]
+
+            output = net(m,v)
 
             predict_label = t.argmax(output,dim=1)
-            correct += (predict_label == label).sum()
+            correct += (predict_label == l).sum()
 
-    return correct.cpu().numpy() * 1.0 / num
+
+    return correct.cpu().numpy()*1.0/num
 
 
 
@@ -69,46 +70,46 @@ def main():
     parser = argparse.ArgumentParser(description='AID_PRETRAIN')
     parser.add_argument('--batch_size', type=int, default=256,help='training batch size')
     parser.add_argument('--learning_rate', type=float, default=1e-3, help='learning rate')
-    parser.add_argument('--epoch',type=int,default=40,help='training epoch')
+    parser.add_argument('--epoch',type=int,default=20,help='training epoch')
+
     parser.add_argument('--momentum', type=float, default=0.9, metavar='M', help = 'SGD momentum (default: 0.9)')
     args = parser.parse_args()
 
-    data_tf = torchvision.transforms.Compose(
-        [
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.0], [1.0])
-        ]
-    )
+    # set seed
     # seed
     import SEED
     np.random.seed(SEED.S)
     t.manual_seed(SEED.S)
     t.cuda.manual_seed_all(SEED.S)
-
     print('loading data')
 
-    mnist_train_data = BioModalDataset(file='./data/biomodal/biomodal_train.npy')
-    mnist_test_data = BioModalDataset(file='./data/biomodal/biomodal_test.npy')
+    train_dataset = BioModalDataset(file='./data/splitmodal/split_mnist_train.npy')
+    test_dataset = BioModalDataset(file='./data/splitmodal/split_mnist_test.npy')
 
-    train_dataloader = DataLoader(mnist_train_data, batch_size=args.batch_size, shuffle=True)
-    test_dataloader = DataLoader(mnist_test_data, batch_size=args.batch_size, shuffle=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
 
+
+    mnist_net = CNN_M(10)
+    mnist_net_cuda = t.nn.DataParallel(mnist_net,device_ids=[0]).cuda()
+    svhn_net = CNN_S(10)
+    svhn_net_cuda = t.nn.DataParallel(svhn_net,device_ids=[0]).cuda()
+    fusion_net = CNN_F(mnist_net_cuda,svhn_net_cuda,10)
+    fuson_net_cuda = t.nn.DataParallel(fusion_net,device_ids=[0]).cuda()
     loss_func = t.nn.CrossEntropyLoss()
-    net = CNN(num_class=10)
-    net = t.nn.DataParallel(net).cuda()
 
-    optimizer = optim.SGD(params=net.parameters(), lr=args.learning_rate, momentum=args.momentum)
+    optimizer = optim.SGD(params=fuson_net_cuda.parameters(), lr=args.learning_rate, momentum=args.momentum)
     max_acc = 0.0
-    print('training mnist with CNN')
+    print('training mnist split with dual CNN')
     for e in range(args.epoch):
-        net_train(net,train_dataloader,optimizer,loss_func,e,args)
-        test_acc = net_test(net,test_dataloader)
+        net_train(fuson_net_cuda,train_dataloader,optimizer,loss_func,e,args)
+        test_acc = net_test(fuson_net_cuda,test_dataloader)
         print('EPOCH:%d TEST ACC:%f' % (e,test_acc))
         sys.stdout.flush()
         if test_acc > max_acc:
             max_acc = test_acc
 
-    f = open('./result/train_mnist_on_CNN.txt',mode='w')
+    f = open('./result/train_mnist_split_on_CNN.txt',mode='w')
     f.write('max_acc:%.4f' % (max_acc))
     f.close()
 

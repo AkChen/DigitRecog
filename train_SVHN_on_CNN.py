@@ -1,4 +1,5 @@
 import torch as t
+import numpy as np
 import torchvision
 from CNN_SVHN import CNN
 from torch.utils.data import DataLoader,TensorDataset
@@ -9,7 +10,8 @@ from torchvision.datasets import mnist,svhn
 import argparse
 import sys
 data_root_path = './data/SVHN/'
-
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 def net_train(net,data_loader,opt,loss_func,cur_e,args):
 
@@ -20,9 +22,10 @@ def net_train(net,data_loader,opt,loss_func,cur_e,args):
     batch_num = int(len(data_loader.dataset) / args.batch_size)
 
     for i,data in enumerate(data_loader,0):
-        print('batch:%d/%d' % (i,batch_num))
-        img,label = data
-        img,label = img.cuda(),label.cuda()
+        #print('batch:%d/%d' % (i,batch_num))
+        m, v, l = data
+        m, v, l = m.type(t.FloatTensor).cuda(), v.type(t.FloatTensor).cuda(), l.type(t.LongTensor).cuda()
+        img, label = v, l
 
         opt.zero_grad()
 
@@ -64,7 +67,7 @@ def main():
     parser = argparse.ArgumentParser(description='AID_PRETRAIN')
     parser.add_argument('--batch_size', type=int, default=128,help='training batch size')
     parser.add_argument('--learning_rate', type=float, default=1e-3, help='learning rate')
-    parser.add_argument('--epoch',type=int,default=20,help='training epoch')
+    parser.add_argument('--epoch',type=int,default=40,help='training epoch')
     parser.add_argument('--momentum', type=float, default=0.9, metavar='M', help = 'SGD momentum (default: 0.9)')
     args = parser.parse_args()
 
@@ -74,10 +77,16 @@ def main():
             torchvision.transforms.Normalize([0.0], [1.0])
         ]
     )
+    # seed
+    import SEED
+    np.random.seed(SEED.S)
+    t.manual_seed(SEED.S)
+    t.cuda.manual_seed_all(SEED.S)
     print('loading data')
 
     mnist_train_data = BioModalDataset(file='./data/biomodal/biomodal_train.npy')
     mnist_test_data = BioModalDataset(file='./data/biomodal/biomodal_test.npy')
+
     train_dataloader = DataLoader(mnist_train_data, batch_size=args.batch_size, shuffle=True)
     test_dataloader = DataLoader(mnist_test_data, batch_size=args.batch_size, shuffle=True)
 

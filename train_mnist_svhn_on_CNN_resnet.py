@@ -1,4 +1,5 @@
 import torch as t
+import numpy as np
 import torchvision
 from CNN_MNIST import CNN as CNN_M
 from resnet_image import resnet18 as CNN_S
@@ -13,6 +14,8 @@ import sys
 data_root_path = './data/'
 train_batch_size = 64
 test_batch_size = 64
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 def net_train(net,data_loader,opt,loss_func,cur_e,args):
 
@@ -70,7 +73,11 @@ def main():
     parser.add_argument('--epoch',type=int,default=20,help='training epoch')
     parser.add_argument('--momentum', type=float, default=0.9, metavar='M', help = 'SGD momentum (default: 0.9)')
     args = parser.parse_args()
-
+    # seed
+    import SEED
+    np.random.seed(SEED.S)
+    t.manual_seed(SEED.S)
+    t.cuda.manual_seed_all(SEED.S)
     print('loading data')
 
     train_dataset = BioModalDataset(file='./data/biomodal/biomodal_train.npy')
@@ -82,7 +89,7 @@ def main():
 
     mnist_net = CNN_M(10)
     mnist_net_cuda = t.nn.DataParallel(mnist_net,device_ids=[0]).cuda()
-    svhn_net = CNN_S(10)
+    svhn_net = CNN_S(pretrained=False,num_classes=10)
     svhn_net_cuda = t.nn.DataParallel(svhn_net,device_ids=[0]).cuda()
     fusion_net = CNN_F(mnist_net_cuda,svhn_net_cuda,10)
     fuson_net_cuda = t.nn.DataParallel(fusion_net,device_ids=[0]).cuda()

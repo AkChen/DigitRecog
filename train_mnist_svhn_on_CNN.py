@@ -1,4 +1,5 @@
 import torch as t
+import numpy as np
 import torchvision
 from CNN_MNIST import CNN as CNN_M
 from CNN_SVHN import CNN as CNN_S
@@ -13,6 +14,8 @@ import sys
 data_root_path = './data/'
 train_batch_size = 64
 test_batch_size = 64
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 def net_train(net,data_loader,opt,loss_func,cur_e,args):
 
@@ -68,9 +71,16 @@ def main():
     parser.add_argument('--batch_size', type=int, default=128,help='training batch size')
     parser.add_argument('--learning_rate', type=float, default=1e-3, help='learning rate')
     parser.add_argument('--epoch',type=int,default=20,help='training epoch')
+
     parser.add_argument('--momentum', type=float, default=0.9, metavar='M', help = 'SGD momentum (default: 0.9)')
     args = parser.parse_args()
 
+    # set seed
+    # seed
+    import SEED
+    np.random.seed(SEED.S)
+    t.manual_seed(SEED.S)
+    t.cuda.manual_seed_all(SEED.S)
     print('loading data')
 
     train_dataset = BioModalDataset(file='./data/biomodal/biomodal_train.npy')
